@@ -15,6 +15,35 @@ The Python engine of v0.1.0-v0.5.1 stays on [branch `deepseek-v41-tp2`](https://
 Clean-room: the model math is re-implemented from DeepSeek's MIT inference code and tech report; no code from other
 DeepSeek-V4.1 recipes or kits was read or copied.
 
+## What's new in the fork
+
+A bootstrap (`prepare.sh`) and a head-local, `.env`-driven launcher. Run everything **on the head**:
+
+```bash
+# image
+docker pull crpi-yh24mmh0y8pyh6si.cn-hangzhou.personal.cr.aliyuncs.com/tsc_public/deepseekv41flash_tensorfold:v1.0.0
+
+# this repo
+git clone --branch main_neo https://github.com/LeetJoe/deepseek-v4.1-tensorfold-tp2-2xgb10.git \
+  ~/code/deepseek-v4.1-tensorfold-tp2-2xgb10
+cd ~/code/deepseek-v4.1-tensorfold-tp2-2xgb10
+cp .env.example .env      # edit: SSH user, IPs, model/cache dirs
+
+./prepare.sh              # image, repos (TensorFold deepseek-v41-zig + tp2 worktree), weights,
+                          # engine build, kit, token map, rank cache — idempotent
+./start.sh                # serve (rank 1 then rank 0, waits ready, smoke)
+```
+
+**Fork fix:** the indexer's row-block stride can be odd, which loses the per-block VIS pointer's 16-byte alignment,
+so the kit's `_index_score_rows` variants no longer match and a ~>131K-token context returns a 500
+(`MissingTritonVariant`). The fork forces the stride even (`prompt.zig`: `& ~@as(usize, 1)`), with the pristine file
+kept as `prompt.zig.bak`. `prepare.sh` applies it on every checkout; re-apply if you rebuild from a fresh source tree.
+
+Management: `stop.sh` stops the engines, `stop.sh all` also the container, `tf.sh status|logs` for state.
+
+Layout: weights in `~/models`, engine/kit/inputs/logs in `~/cache`; container paths are `/workspace/models` and
+`/workspace/cache`. Source trees live in `~/code` and are not mounted.
+
 ## v0.6.1 (2026-10-09): the kernel kit in git, no engine change
 
 The kit the Zig engine loads is now in this repository's `kit/`, byte for byte the kit our served lane loads (engine
