@@ -1,0 +1,39 @@
+# the serving container (one per node) — the DeepSeek-V4.1-Flash TP2 lane.
+#
+# Run this ON THE HEAD (from this repo dir), or let tf.sh scp it to the worker and run it there.
+# Values come from .env (see .env.example); every one has a built-in default here.
+#
+# In-container mount points are FIXED at /workspace/models and /workspace/cache; the HOST side
+# comes from HEAD_MODELS_DIR / HEAD_CACHE_DIR (on the worker, tf.sh overrides them to the worker
+# values — that is the only difference between the two nodes).
+#
+# Normally the EXISTING container is reused (tf.sh start/stop/restart) — this file is only used
+# to CREATE the container if it is ever missing (`tf.sh create`). It is never removed.
+name: ${CONTAINER:-tf-dsv41}
+services:
+  tf-dsv41:
+    image: ${IMAGE:-tf-dsv41:2026-10-10}
+    container_name: ${CONTAINER:-tf-dsv41}
+    network_mode: host
+    ipc: host
+    cap_add:
+      - IPC_LOCK
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    devices:
+      - /dev/infiniband
+    volumes:
+      - /dev/infiniband:/dev/infiniband
+      - ${HEAD_MODELS_DIR:-/home/dgxspark/models}:/workspace/models
+      - ${HEAD_CACHE_DIR:-/home/dgxspark/cache}:/workspace/cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: ["sleep", "infinity"]
+    restart: unless-stopped

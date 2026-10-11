@@ -1,0 +1,2 @@
+# local config (copy .env.example -> .env)
+.env
