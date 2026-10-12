@@ -21,7 +21,7 @@ A bootstrap (`prepare.sh`) and a head-local, `.env`-driven launcher. Run everyth
 
 ```bash
 # image
-docker pull crpi-yh24mmh0y8pyh6si.cn-hangzhou.personal.cr.aliyuncs.com/tsc_public/deepseekv41flash_tensorfold:v1.0.0
+docker pull ghcr.io/leetjoe/deepseekv41flash_tensorfold:v1.0.0
 
 # this repo
 git clone --branch main_neo https://github.com/LeetJoe/deepseek-v4.1-tensorfold-tp2-2xgb10.git \
