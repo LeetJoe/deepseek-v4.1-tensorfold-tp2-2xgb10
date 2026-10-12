@@ -4,9 +4,10 @@
 #   ./start.sh            start  (idempotent: stops any running engine, reuses/creates the container,
 #                                 starts rank 1 then rank 0, waits until ready, smoke-tests)
 #   ./start.sh restart    same as start
-#   ./start.sh stop       stop the engines (same as stop.sh)
+#   ./start.sh stop       stop the engines and the containers (delegates to stop.sh)
 #
-# The container is REUSED (never deleted); tf.sh handles it.
+# The container is REUSED (never deleted); tf.sh handles it. `stop` goes through stop.sh so
+# there is a single stop path (fallback if that script is missing: kill the engines only).
 # Config comes from .env (optional) with the defaults below as fallback.
 set -uo pipefail
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -109,7 +110,15 @@ wait_ready() {
 }
 
 case "${1:-start}" in
-  stop) stop_engines ;;
+  stop)
+    # single stop path: stop.sh kills the engines and then stops the containers
+    if [ -x "$SRC/stop.sh" ]; then
+      exec "$SRC/stop.sh"
+    else
+      echo "warn: $SRC/stop.sh not found — stopping the engines only" >&2
+      stop_engines
+    fi
+    ;;
   start|restart|"")
     stop_engines
     echo "[containers] reusing/creating $CONTAINER"

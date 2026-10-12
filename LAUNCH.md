@@ -145,11 +145,16 @@ curl -s http://127.0.0.1:8888/v1/chat/completions -H "Content-Type: application/
 ## 停止 / 重启
 
 ```bash
-./start.sh            # 起服务（幂等）
-./stop.sh             # 停引擎，容器保留
-./stop.sh all         # 连容器一起停
-./tf.sh status|logs   # 看状态
+./start.sh            # 起服务（幂等：先清引擎 → 复用/建容器 → rank1 再 rank0 → 等 ready → smoke）
+./stop.sh             # 停引擎，然后把容器也 docker stop（容器保留，不删除）
+./stop.sh keep        # 只停引擎，容器继续跑
+./start.sh stop       # 等同 ./stop.sh
+./tf.sh status|logs   # 看状态（status 会显示容器状态和引擎是否在跑）
 ```
+
+停容器是有意为之：它释放容器占用的内存/shm 和最后一个 GPU 上下文；因为是被显式 stop，compose 的
+`restart: unless-stopped` 不会把它自动拉起来。下次 `./start.sh` 用 `docker start` 起回同一个容器（不重建）。
+`tf.sh stop` / `tf.sh restart` 都可重复执行：已停就报 `already stopped`，restart 对已停容器会自动退回 start。
 
 重启 = 再跑 `./start.sh`（rank cache 已在，不用再做 A 段）。
 

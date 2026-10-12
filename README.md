@@ -39,7 +39,9 @@ so the kit's `_index_score_rows` variants no longer match and a ~>131K-token con
 (`MissingTritonVariant`). The fork forces the stride even (`prompt.zig`: `& ~@as(usize, 1)`), with the pristine file
 kept as `prompt.zig.bak`. `prepare.sh` applies it on every checkout; re-apply if you rebuild from a fresh source tree.
 
-Management: `stop.sh` stops the engines, `stop.sh all` also the container, `tf.sh status|logs` for state.
+Management: `stop.sh` stops the engines **and** the containers (containers are kept, not removed);
+`stop.sh keep` leaves the containers up (engines only); `tf.sh status|logs` for state, `tf.sh stop`
+is idempotent. `start.sh stop` is an alias for `stop.sh`.
 
 Layout: weights in `~/models`, engine/kit/inputs/logs in `~/cache`; container paths are `/workspace/models` and
 `/workspace/cache`. Source trees live in `~/code` and are not mounted.

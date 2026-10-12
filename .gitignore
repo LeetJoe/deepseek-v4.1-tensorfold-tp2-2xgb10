@@ -1,3 +1,4 @@
 # local config (copy .env.example -> .env)
 .env
 HANDOFF_my.md
+.vscode
