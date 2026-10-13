@@ -34,12 +34,10 @@ cp .env.example .env      # edit: SSH user, IPs, model/cache dirs
 ./start.sh                # serve (rank 1 then rank 0, waits ready, smoke)
 ```
 
-**Fork fix:** the indexer's row-block stride can be odd, which loses the per-block VIS pointer's 16-byte alignment,
-so the kit's `_index_score_rows` variants no longer match and a ~>131K-token context returns a 500
-(`MissingTritonVariant`). The fork forces the stride even (`prompt.zig`: `& ~@as(usize, 1)`), with the pristine file
-kept as `prompt.zig.bak`. `prepare.sh` applies it on every checkout; re-apply if you rebuild from a fresh source tree.
-Upstream has since fixed the same class properly — `b8ae0c7b` (#4) routes each row block's vis through `visBlock()`,
-which copies it when misaligned — so this patch is now belt-and-braces.
+**Upstream fix we rely on:** the indexer's row-block stride can be odd, which loses the per-block VIS pointer's
+16-byte alignment, so the kit's `_index_score_rows` variants no longer match and a ~>131K-token context returns a 500
+(`MissingTritonVariant`). Upstream `b8ae0c7b` (#4) fixes it properly — each row block's vis goes through `visBlock()`,
+which copies it when misaligned — so the fork no longer patches `prompt.zig`.
 
 **Fork fix (image attachments):** the backend renders every image part as the placeholder literal `<｜deepseek_image｜>`
 (U+FF5C bars) into the message text, and that string is a tokenizer special (`image_token`). A message whose own text

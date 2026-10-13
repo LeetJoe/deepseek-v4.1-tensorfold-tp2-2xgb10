@@ -5,7 +5,7 @@
 #
 #   1 repos    this repo + TensorFold (engine branch, plus a tp2 worktree for the Python side)
 #   2 weights  EXL3 checkpoint + the Engram shards, into $HEAD_MODELS_DIR
-#   3 engine   zig build -> cache/tf-build, with the long-context rb patch applied
+#   3 engine   zig build -> cache/tf-build
 #   4 kit      repo kit/ -> cache/kit, the 5 generated files made, MANIFEST verified
 #   5 inputs   token map, then the A-phase rank cache (both nodes, rank 0 first)
 #
@@ -114,22 +114,6 @@ say "3/5 engine (zig build, both nodes)"
   curl -fL --retry 3 --retry-all-errors -o /tmp/zig.tar.xz \
     "https://ziglang.org/download/$ZIG_VERSION/zig-aarch64-linux-$ZIG_VERSION.tar.xz" \
     && tar -xJf /tmp/zig.tar.xz -C "$(dirname "$ZIG_DIR")"; }
-
-# the rb parity patch: the indexer row-block stride must be even, or ~>131K-token contexts 500
-patch_rb() { # $1 = dir holding the repo
-  local p="$1/zig/src/families/dsv41/prompt.zig"
-  [ -f "$p" ] || return 0
-  grep -q "& ~@as(usize, 1)" "$p" && return 0
-  cp -n "$p" "$p.bak"
-  sed -i 's|\(@as(usize, 1) << 26) / (4 \* @max(n_comp_end, 1)))\)|\1 \& ~@as(usize, 1))|' "$p"
-  echo "[patch] rb parity applied to $p"
-}
-patch_rb "$HEAD_CACHE_DIR/tensorfold"
-on_worker "cp -n '$WORKER_CACHE_DIR/tensorfold/zig/src/families/dsv41/prompt.zig' \
-  '$WORKER_CACHE_DIR/tensorfold/zig/src/families/dsv41/prompt.zig.bak' 2>/dev/null; true"
-on_worker "grep -q '& ~@as(usize, 1)' '$WORKER_CACHE_DIR/tensorfold/zig/src/families/dsv41/prompt.zig' || \
-  sed -i 's|\(@as(usize, 1) << 26) / (4 \* @max(n_comp_end, 1)))\)|\1 \& ~@as(usize, 1))|' \
-  '$WORKER_CACHE_DIR/tensorfold/zig/src/families/dsv41/prompt.zig'"
 
 build_engine() { # $1 = cache dir on that node
   docker exec "$CONTAINER" bash -c "mkdir -p '$1/tf-build' && cd '$1/tensorfold' && \
