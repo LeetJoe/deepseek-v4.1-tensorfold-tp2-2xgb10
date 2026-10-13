@@ -62,7 +62,7 @@ say() { echo; echo "== $* =="; }
 
 # ---------------------------------------------------------------- 0. image + container
 say "0/5 image + container"
-IMAGE="${IMAGE:-crpi-yh24mmh0y8pyh6si.cn-hangzhou.personal.cr.aliyuncs.com/tsc_public/deepseekv41flash_tensorfold:v1.0.0}"
+IMAGE="${IMAGE:-ghcr.io/leetjoe/deepseekv41flash_tensorfold:v1.0.0}"
 docker image inspect "$IMAGE" >/dev/null 2>&1 || { echo "[image] pulling $IMAGE"; docker pull "$IMAGE"; }
 "$SRC/tf.sh" start
 
