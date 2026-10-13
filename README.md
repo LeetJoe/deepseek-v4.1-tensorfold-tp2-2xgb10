@@ -39,6 +39,16 @@ so the kit's `_index_score_rows` variants no longer match and a ~>131K-token con
 (`MissingTritonVariant`). The fork forces the stride even (`prompt.zig`: `& ~@as(usize, 1)`), with the pristine file
 kept as `prompt.zig.bak`. `prepare.sh` applies it on every checkout; re-apply if you rebuild from a fresh source tree.
 
+**Fork fix (image attachments):** the backend renders every image part as the placeholder literal `<｜deepseek_image｜>`
+(U+FF5C bars) into the message text, and that string is a tokenizer special (`image_token`). A message whose own text
+carries the placeholder — Claude Code turns a pasted image filename into `[Image #N]`, and the token reappears wherever
+this source is quoted — injects stray `image_token` ids, so `prompt.spans`' image count no longer matches and
+`messages.normalizeImages` refuses with `400 image input: message text must not contain the image placeholder token`;
+once it is in the history, even text-only turns 400. The fork escapes the placeholder in messages' text to its plain,
+non-special form `<|deepseek_image|>` (`messages.zig`), leaving each image part's own placeholder intact; the pure-text
+path and `count_tokens` are unchanged. Pristine file kept as `messages.zig.bak`. Carried in the image; re-apply if you
+rebuild the engine from a pristine tree.
+
 Management: `stop.sh` stops the engines **and** the containers (containers are kept, not removed);
 `stop.sh keep` leaves the containers up (engines only); `tf.sh status|logs` for state, `tf.sh stop`
 is idempotent. `start.sh stop` is an alias for `stop.sh`.
