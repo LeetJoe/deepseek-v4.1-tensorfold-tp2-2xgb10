@@ -250,7 +250,8 @@ Build the `deepseek-v41-zig` branch with Zig 0.17.0 inside `nvcr.io/nvidia/pytor
 zig build install native -Dtarget=aarch64-linux-gnu -Doptimize=ReleaseSafe -Dnvcc=/usr/local/cuda/bin/nvcc -Dsm=121 --prefix <OUT>
 ```
 
-That gives `tensorfold` (the server, rank 0) and `tf-dsv41-lanes` (rank 1, following rank 0). Both ranks run in the same
+That gives `native/bin/tensorfold-native` (the server, rank 0) and `bin/tf-dsv41-lanes` (rank 1, following rank 0);
+`bin/tensorfold` is a test CLI, not the server. Both ranks run in the same
 container image with the RoCE devices, `--network host --ipc host --ulimit memlock=-1`. They read a kernel kit
 `<KIT>`: the family's Triton kernels as compiled binaries (`aot/`, `cubins/`), the RoPE tables, `engram.json`, and
 `vision/` (the tower's attention kernel from the container's PyTorch, and the image routing bias from DeepSeek's
@@ -284,11 +285,13 @@ TF_DS_REPLAY_FLOOR=1 TF_TP_WORLD=2 TF_TP_MASTER=<HEAD_IP> TF_TP_PORT=29620 TF_DS
 TF_DS_KIT=<KIT> TENSORFOLD_CUDA_KERNELS=<KIT>/aot TF_DS_ENGRAM=<ENGRAM_DIR> TF_DS_TOKEN_MAP=<TOKEN_MAP> \
 TF_RDMA_DEVICES=<HCA_PORT_0>,<HCA_PORT_1> TF_DS_GRAPHS=1 TF_DS_HC_SIDE=1 TF_DS_L2_PREFETCH=1 TF_DS_ENGRAM_AIO=1 \
 NCCL_IB_HCA=<HCA_PORT_0>,<HCA_PORT_1> NCCL_IB_GID_INDEX=5 NCCL_SOCKET_IFNAME=<IFACE> \
-tensorfold serve <MODEL_DIR> --host 127.0.0.1 --port 18891 --name DeepSeek-V4.1-Flash-TF --api-key-file <KEY_FILE> \
+tensorfold-native serve <MODEL_DIR> --host 127.0.0.1 --port 18891 --name DeepSeek-V4.1-Flash-TF --api-key-file <KEY_FILE> \
   --context 1048576 --parallel 4 --thinking --max-tokens 32768 --temperature 1.0 --top-p 0.95 --top-k 20 --backend cuda
 ```
 
 - `TF_DS_REPLAY_FLOOR=1` goes to both ranks.
+- Rank 1 must match rank 0's settings: `TF_DS_STREAMS=N` on rank 0 needs `--streams N` on rank 1, and rank 1's
+  `--pool` equals rank 0's `--context`. With different values the two ranks wait on each other (#25).
 - Images in formats other than PNG need `python3` with Pillow in the container (the NVIDIA image has it).
 - `<CACHE_DIR>` keeps each rank's weights in one file (written on the first start); `<TOKEN_MAP>` and the cache are
   the ones the `deepseek-v41-tp2` engine writes.
