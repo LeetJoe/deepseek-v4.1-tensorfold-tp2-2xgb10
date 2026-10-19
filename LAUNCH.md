@@ -48,6 +48,8 @@ head 磁盘剩 551G，rank cache 要 106G，够但别再塞大文件。
 
 > 只在 `~/cache/dsv41/tf-ds-rank` 为空时才需要。A 段的 Python 引擎源码在 `/home/dgxspark/code/tensorfold-tp2`，
 > 而容器只挂 `models`+`cache`，所以 A 段要么临时加挂 `/home/dgxspark/code`，要么把 tp2 源码放进 cache。
+> `TF_DS_RDMA=0`：Python 引擎的 RDMA gather 默认开启，在这两台机器上 warm 阶段会 `transport retry counter
+> exceeded`（见 HANDOFF_my 的 RDMA ring 条目）；置 0 回退纯 NCCL，A 段收尾不再报错。
 
 原理：Zig 引擎只**读** rank cache（`rank_cache.find` 找不到直接报 `NoRankCache`）；
 缓存由 deepseek-v41-tp2 Python 引擎第一次启动时写出。两台**同时**各启动一次，rank 0（head）先。
@@ -60,7 +62,7 @@ ssh dgxspark@192.168.1.101 'docker exec tf-dsv41 pip install -e /workspace/cache
 # A2. head 先起 rank 0（写缓存模式；日志 /workspace/cache/temp/inputs-rank0.log）
 mkdir -p ~/cache/dsv41/tf-ds-rank ~/cache/temp
 docker exec -d tf-dsv41 bash -c "
-TF_DS_REPLAY=1 TF_DS_PREFILL_CHUNK=2048 TF_DS_RANK_CACHE=/workspace/cache/dsv41/tf-ds-rank \
+TF_DS_REPLAY=1 TF_DS_PREFILL_CHUNK=2048 TF_DS_RDMA=0 TF_DS_RANK_CACHE=/workspace/cache/dsv41/tf-ds-rank \
 TF_DS_RANK_CACHE_READERS=32 TF_DS_TOKEN_MAP=/workspace/cache/dsv41_token_map.json \
 TF_DS_ENGRAM=/workspace/models/DeepSeek-V4.1-Flash \
 NCCL_IB_HCA=roceP2p1s0f1,rocep1s0f1 NCCL_IB_GID_INDEX=5 NCCL_SOCKET_IFNAME=enP2p1s0f1np1 NCCL_NET_PLUGIN=spcx \
@@ -71,7 +73,7 @@ tensorfold serve /workspace/models/DeepSeek-V4.1-Flash-UNCENSORED-EXL3-2.9bpw \
 
 # A3. 约 30s 后起 worker 的 rank 1（rank 1 连不上会自己重试，看日志）
 ssh dgxspark@192.168.1.101 'mkdir -p ~/cache/dsv41/tf-ds-rank ~/cache/temp && docker exec -d tf-dsv41 bash -c "
-TF_DS_REPLAY=1 TF_DS_PREFILL_CHUNK=2048 TF_DS_RANK_CACHE=/workspace/cache/dsv41/tf-ds-rank \
+TF_DS_REPLAY=1 TF_DS_PREFILL_CHUNK=2048 TF_DS_RDMA=0 TF_DS_RANK_CACHE=/workspace/cache/dsv41/tf-ds-rank \
 TF_DS_RANK_CACHE_READERS=32 TF_DS_TOKEN_MAP=/workspace/cache/dsv41_token_map.json \
 TF_DS_ENGRAM=/workspace/models/DeepSeek-V4.1-Flash \
 NCCL_IB_HCA=roceP2p1s0f1,rocep1s0f1 NCCL_IB_GID_INDEX=5 NCCL_SOCKET_IFNAME=enP2p1s0f1np1 NCCL_NET_PLUGIN=spcx \

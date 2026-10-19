@@ -2,3 +2,4 @@
 .env
 HANDOFF_my.md
 .vscode
+.claude/
