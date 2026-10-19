@@ -174,7 +174,7 @@ fi
 if [ -z "$(ls -A "$HEAD_CACHE_DIR/dsv41/tf-ds-rank" 2>/dev/null)" ]; then
   echo "[A] building rank caches on both nodes (rank 0 first) — ~106 GB/rank, takes a while"
   docker exec -d "$CONTAINER" bash -c "
-TF_DS_REPLAY=1 TF_DS_PREFILL_CHUNK=2048 TF_DS_RANK_CACHE=$CACHE_MOUNT/dsv41/tf-ds-rank \
+TF_DS_REPLAY=1 TF_DS_PREFILL_CHUNK=2048 TF_DS_RDMA=0 TF_DS_RANK_CACHE=$CACHE_MOUNT/dsv41/tf-ds-rank \
 TF_DS_RANK_CACHE_READERS=32 TF_DS_TOKEN_MAP=$CACHE_MOUNT/dsv41_token_map.json \
 TF_DS_ENGRAM=$MODELS_MOUNT/$ENGRAM_SUBDIR \
 $NCCL_ENV \
@@ -184,7 +184,7 @@ tensorfold serve $MODELS_MOUNT/$WEIGHTS_SUBDIR \
   > $CACHE_MOUNT/temp/inputs-rank0.log 2>&1"
   sleep 30
   on_worker "docker exec -d '$CONTAINER' bash -c \"
-TF_DS_REPLAY=1 TF_DS_PREFILL_CHUNK=2048 TF_DS_RANK_CACHE=$CACHE_MOUNT/dsv41/tf-ds-rank \\
+TF_DS_REPLAY=1 TF_DS_PREFILL_CHUNK=2048 TF_DS_RDMA=0 TF_DS_RANK_CACHE=$CACHE_MOUNT/dsv41/tf-ds-rank \\
 TF_DS_RANK_CACHE_READERS=32 TF_DS_TOKEN_MAP=$CACHE_MOUNT/dsv41_token_map.json \\
 TF_DS_ENGRAM=$MODELS_MOUNT/$ENGRAM_SUBDIR \\
 $NCCL_ENV \\
